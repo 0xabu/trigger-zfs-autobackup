@@ -8,32 +8,26 @@ Monitors udev events to detect when new disks are attached. If the attached disk
 
 ## Usage
 ```
-Usage: trigger.sh [-h] [--install] [--start] [--stop] [--restart] [--test] CONFIG_FILE
+usage: trigger-zfs-autobackup [-h] [--start | --stop | --restart | --test] [CONFIG_FILE]
 
-Daemon to trigger zfs-autobackup when attaching backup disk.
+Triggers zfs-autobackup jobs on disk hotplug events
 
-1. Manually create (encrypted) ZFS pool(s) on removable disk(s).
-2. Manually edit config to specify the names of your backup pool(s), the zfs-autobackup parameters and the encryption passphrase.
-3. Manually schedule 'trigger.sh --start' to run at system startup.
-   On TrueNAS SCALE: System Settings -> Advanced -> Init/Shutdown Scripts -> Add
-    Description: trigger-zfs-autobackup;
-    Type: Script;
-    Script: '/path/to/trigger.sh --start /path/to/config.toml';
-    When: Post Init 
-   -> Save
-4. Manually insert backup disk whenever you want to make a backup.
-5. Automatic backup is triggered. On completion, an email is sent and periodic beeping is heard until the disk is removed.
+positional arguments:
+  CONFIG_FILE  Path to the config file
+
+options:
+  -h, --help   show this help message and exit
+  --start      Start as a daemon process
+  --stop       Stop a running daemon process
+  --restart    Restart a running daemon process
+  --test       Run a one-time backup for all configured pools that are present, then exit
 ```
-
-## Security
-
-For security reasons, ensure only `root` can modify the `trigger-zfs-autobackup` files. The scripts will be automatically executed with `root` privileges, so you don't want anyone to modify what they do. If using encryption, it's advisable to further ensure that the config file is only readable by root, as it contents your passphrases.
 
 ## Setup
 
 ### Prepare backup disk
 
-If `trigger-zfs-autobackup` is already installed, then temporarily disable it by executing `trigger.sh --stop`.
+If `trigger-zfs-autobackup` is already installed, then temporarily disable it by executing `trigger-zfs-autobackup --stop`.
 
 Execute the following commands to prepare a backup disk to use with `trigger-zfs-autobackup`. Please read the commands (and comments!) carefully before executing them. You have to change several values.
 
@@ -70,39 +64,39 @@ zpool export $POOL
 # Manually set autobackup:offsite1 on the datasets you want to backup (exchange offsite1 for the value chosen voor POOL above)
 ```
 
-Don't forget to re-enable the backups by executing `trigger.sh --start` in case you had installed `trigger-zfs-autobackup` before.
+Don't forget to re-enable the backups by executing `trigger-zfs-autobackup --start /path/to/config.toml` in case you had installed `trigger-zfs-autobackup` before.
 
 ### Install trigger-zfs-autobackup
 
 Install the program into a directory that will survive updates of TrueNAS Scale.
+
 ```bash
 # Create a folder where you want to install the script
-mkdir trigger-zfs-autobackup
-cd trigger-zfs-autobackup
+mkdir autobackup && cd autobackup
 
-# Download and extract files
-curl -LO https://github.com/0xabu/trigger-zfs-autobackup/archive/refs/heads/main.zip
-unzip -j main.zip -x */.git*
-rm main.zip
-
-# Run install to create a Python virtual environment and download dependencies to it.
-./trigger.sh --install
+# Download and run the installer.
+curl -fsSL https://raw.githubusercontent.com/0xabu/trigger-zfs-autobackup/main/install.sh | bash
 ```
-This will install the dependencies locally using a Python virtual environment. The installation makes no modifications to the system outside its installation directory. This is to ensure `trigger-zfs-autobackup` will survive updates of TrueNAS SCALE (as long as you store it on one of your data pools, and not on the disks where the TrueNAS base system is installed).
+
+This will install the program and its dependencies locally using a Python virtual environment. The installation makes no modifications to the system outside its installation directory, so it will survive updates of TrueNAS SCALE (as long as you store it on one of your data pools, and not on the disks where the TrueNAS base system is installed).
+
+Note: if you're sufficiently paranoid, you may wish to check what [the script](./install.sh) does (or just replicate it by hand).
+
+For security reasons, ensure only `root` can modify the `trigger-zfs-autobackup` files. The scripts will be automatically executed with `root` privileges, so you don't want anyone to modify what they do. If using encryption, it's advisable to further ensure that the config file is only readable by root, as it contains your passphrases.
 
 ### Edit config
 
 You need to create the config file, starting from a copy of the [config_template](./config_template.toml) file. Specify the names of your backup pools and their zfs-autobackup parameters and encryption passphrase. Each backup pool can only have one configuration.
 
-If you modify the config, restart the daemon with `trigger.sh --restart /path/to/your/config.toml`.
+If you modify the config, restart the daemon with `trigger-zfs-autobackup --restart /path/to/config.toml`.
 
 ### Schedule trigger-zfs-autobackup
 
-The [trigger.sh](./trigger.sh) script needs to run on system startup. You need to manually configure this, for example using `cron` or `systemd`. On TrueNAS SCALE you can schedule the script via the web interface:
+The program needs to run on system startup. You need to manually configure this, for example using `cron` or `systemd`. On TrueNAS SCALE you can schedule it via the web interface:
 System Settings -> Advanced -> Init/Shutdown Scripts -> Add
-  Description: trigger-zfs-autobackup;
-  Type: Script;
-  Script: `/path/to/trigger.sh --start /path/to/your/config.toml`;
+  Description: trigger-zfs-autobackup
+  Type: Script
+  Script: `/path/to/autobackup/bin/trigger-zfs-autobackup --start /path/to/config.toml`
   When: Post Init 
 -> Save
 
@@ -112,22 +106,22 @@ Add the `autobackup` property to the datasets you want to backup automatically t
 
 ## Trigger backup
 
-Connect your backup disk to trigger the automatic backup. You should a beep confirming the start of the backup. Once the backup is finished, you'll hear a beep every 10 seconds until you disconnect the disk. You should also receive an email reporting the results of the job.
+Connect your backup disk to trigger the automatic backup. You should a beep confirming the start of the backup. Once the backup is finished, you'll hear a beep every 10 seconds until you disconnect the disk. If appropriately configured, you should also receive an email reporting the results of the job.
 
 Note: it might take a few seconds to recognise that you connected or disconnected a disk.
 
 ### Manual trigger
 
-If your backup somehow failed and you want to try again without unplugging the disk, you can do the following:
+If your backup somehow failed, and you want to try again without unplugging the disk, you can do the following:
 
 1. Export pool
 ```bash
 zpool export PoolName
 ```
 
-2. Restart Script
+2. Restart daemon (if you changed the config file)
 ```bash
-./trigger.sh --restart /path/to/your/config.toml
+trigger-zfs-autobackup --restart /path/to/your/config.toml
 ```
 
 3. Figure out your disk's device name (e.g. 'sdg')
@@ -142,7 +136,7 @@ udevadm trigger --action=add --name-match=<device name>
 
 ## Disable automatic backup
 
-To (temporarily) disable executing automatic backups, execute `trigger.sh --stop`.
+To (temporarily) disable executing automatic backups, execute `trigger-zfs-autobackup --stop`.
 
 ## Snapshots / versioning
 
@@ -157,7 +151,7 @@ A ZFS snapshot will be made before each backup. Snapshots will be kept according
 
 We recommend creating a separate cronjob on the host, to frequently take snapshots (not just when you attach your backup disk). These snapshots will then also be transferred to the backup disk once you connect it. Your backup will thus contain more snapshots, and you'll have more 'versions' to recover from.
 
-The command to schedule via cron could look something like this: `cd /path/to/trigger-zfs-autobackup && . venv/bin/activate && zfs-autobackup offsite1`. Don't forget to change the path and replace `offsite1` with the `autobackup` ZFS property you added to your source datasets. Then schedule it to run hourly.
+The command to schedule via cron could look something like this: `/path/to/autobackup/bin/zfs-autobackup offsite1`. Don't forget to change the path and replace `offsite1` with the `autobackup` ZFS property you added to your source datasets. Then schedule it to run hourly.
 
 ## Recovery
 

@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
 import argparse
-from config_reader import AppConfig, PoolConfig
+from .config_reader import AppConfig, PoolConfig
 from contextlib import redirect_stdout, redirect_stderr
 from email.message import EmailMessage
 import email.policy
@@ -229,7 +227,7 @@ def init_logging(run_as_daemon: bool) -> None:
     syslog_handler = logging.handlers.SysLogHandler(address="/dev/log")
     syslog_handler.setLevel(logging.INFO)
     logging.basicConfig(
-        format=APP_NAME + ' %(levelname)s: %(message)s',
+        format='%(levelname)s: %(message)s',
         handlers=(syslog_handler,),
         level=syslog_handler.level)
 
@@ -242,17 +240,17 @@ def init_logging(run_as_daemon: bool) -> None:
         root_logger.setLevel(console_handler.level)
 
 
-if __name__ == "__main__":
+def main() -> None:
     # Set up command-line argument parsing
-    parser = argparse.ArgumentParser(description="Triggers zfs-autobackup jobs on disk hotplug events")
-    parser.add_argument('config_file', type=argparse.FileType("rb"), help='Path to the config file', nargs='?')
+    parser = argparse.ArgumentParser(prog=APP_NAME, description="Triggers zfs-autobackup jobs on disk hotplug events")
+    parser.add_argument('config_file', type=argparse.FileType("rb"), help='Path to the config file', nargs='?', metavar='CONFIG_FILE')
 
     Action = enum.Enum('Action', ['TEST', 'START', 'STOP', 'RESTART'])
     g = parser.add_mutually_exclusive_group()
     g.add_argument("--start", help="Start as a daemon process", action="store_const", dest='action', const=Action.START)
     g.add_argument("--stop", help="Stop a running daemon process", action="store_const", dest='action', const=Action.STOP)
     g.add_argument("--restart", help="Restart a running daemon process", action="store_const", dest='action', const=Action.RESTART)
-    g.add_argument("--test", help="Run a one-time backup for all configured pools, then exit", action="store_const", dest='action', const=Action.TEST)
+    g.add_argument("--test", help="Run a one-time backup for all configured pools that are present, then exit", action="store_const", dest='action', const=Action.TEST)
 
     # Parse command-line arguments
     args = parser.parse_args()
@@ -293,3 +291,7 @@ if __name__ == "__main__":
             app.test()
         else:
             app.run(daemon=run_as_daemon)
+
+
+if __name__ == "__main__":
+    main()

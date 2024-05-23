@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "trigger-zfs-autobackup"
+version = "0.0.1"
+readme = "README.md"
+license = {file = "LICENSE"}
+dependencies = [
+    "pep3143daemon ~= 0.1.0",
+    "pyudev ~= 0.24.3",
+    "zfs-autobackup ~= 3.2",
+]
+requires-python = ">= 3.11"
+
+[project.urls]
+Repository = "https://github.com/0xabu/trigger-zfs-autobackup.git"
+
+[project.scripts]
+trigger-zfs-autobackup = "trigger_zfs_autobackup.app:main"
+
+[project.optional-dependencies]
+test = [
+    "mypy==1.10.0",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "install.sh",
+]
