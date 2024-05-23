@@ -1,0 +1,26 @@
+name: Python checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install locally, pulling test dependencies as a side-effect
+      run: python -m pip install .[test]
+    - name: Type check with mypy
+      run: mypy trigger_zfs_autobackup
