@@ -225,6 +225,7 @@ def run_command(command: list[str], input: Optional[str] = None) -> subprocess.C
 def init_logging(run_as_daemon: bool) -> None:
     # Always log to syslog at INFO level
     syslog_handler = logging.handlers.SysLogHandler(address="/dev/log")
+    syslog_handler.ident = APP_NAME + ': '
     syslog_handler.setLevel(logging.INFO)
     logging.basicConfig(
         format='%(levelname)s: %(message)s',
