@@ -219,10 +219,10 @@ def init_logging(run_as_daemon: bool) -> list[IO]:
     syslog_handler.setLevel(logging.INFO)
 
     # XXX: get socket from SysLogHandler
-    try:
-        sock = syslog_handler.sock # 3.13
-    except AttributeError:
-        sock = syslog_handler.socket # 3.12 and earlier
+    try: # Python 3.13
+        sock = syslog_handler.sock  # type: ignore[attr-defined]
+    except AttributeError: # Python 3.12 and earlier
+        sock = syslog_handler.socket  # type: ignore[attr-defined]
     files_preserve = [sock]
 
     logging.basicConfig(
