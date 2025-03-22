@@ -8,8 +8,8 @@ import io
 import logging
 import logging.handlers
 import os
-from pep3143daemon import DaemonContext, PidFile  # type: ignore [import-untyped]
-import pyudev  # type: ignore [import-untyped]
+from pep3143daemon import DaemonContext, PidFile
+import pyudev
 import queue
 import signal
 import subprocess
@@ -21,7 +21,7 @@ from typing import IO, Optional
 _real_argv0 = sys.argv[0]
 try:
     sys.argv[0] = 'zfs-autobackup'
-    from zfs_autobackup.ZfsAutobackup import ZfsAutobackup  # type: ignore [import-untyped]
+    from zfs_autobackup.ZfsAutobackup import ZfsAutobackup
 finally:
     sys.argv[0] = _real_argv0
     del _real_argv0

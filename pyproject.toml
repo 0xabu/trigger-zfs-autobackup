@@ -22,10 +22,13 @@ trigger-zfs-autobackup = "trigger_zfs_autobackup.app:main"
 
 [project.optional-dependencies]
 test = [
-    "mypy==1.10.0",
+    "mypy==1.14.1",
 ]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
     "install.sh",
 ]
+
+[tool.mypy]
+ignore_missing_imports = true
