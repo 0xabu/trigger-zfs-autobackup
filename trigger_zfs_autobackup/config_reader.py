@@ -17,6 +17,7 @@ class SecretStr(str):
 class EmailConfig:
     fromaddr: str = 'admin'
     recipients: list[str] = dataclasses.field(default_factory=list)
+    sendmail: str = '/usr/sbin/sendmail'
 
     @classmethod
     def parse(cls, d: dict[str, Any]) -> Self:

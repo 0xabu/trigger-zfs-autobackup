@@ -132,14 +132,18 @@ class UdevAutobackupMonitor:
         message['Subject'] = f"[{APP_NAME}] {subject}"
         message.set_content(body, cte='8bit')
 
-        # On TrueNAS, sendmail is a python script, so we must not leak our private venv to it.
+        # On (old) TrueNAS, sendmail is a python script, so we must not leak our private venv to it.
         child_env = os.environ
         if 'VIRTUAL_ENV' in os.environ:
             child_env['PATH'] = '/usr/local/bin:/usr/bin:/bin:/usr/games'
 
+        # Allow the use of a private truenas_sendmail.py script
+        if not self.config.email.sendmail.startswith('/'):
+            child_env['PATH'] += ':' + os.path.dirname(os.path.abspath(__file__))
+
         # Send the email
         try:
-            subprocess.run(["/usr/sbin/sendmail", "-t", "-i"], env=child_env, input=message.as_bytes(), check=True)
+            subprocess.run([self.config.email.sendmail, "-t", "-i"], env=child_env, input=message.as_bytes(), check=True)
             logger.debug(f"Email about {subject} sent to {self.config.email.recipients}")
         except subprocess.CalledProcessError:
             logger.exception(f"Error sending email to {self.config.email.recipients}")

@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+
+# This file is from older TrueNAS releases, such as:
+# https://github.com/truenas/middleware/blob/release/24.10.0.2/src/freenas/etc/find_alias_for_smtplib.py
+# where it carries the LGPL-3.0 license
+
 import argparse
 import email
 import email.parser

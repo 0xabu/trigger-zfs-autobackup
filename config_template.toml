@@ -7,6 +7,7 @@ beep = true # Unless set to false, the system will beep when starting a backup a
 [email]
 from = "admin"
 recipients = ["admin"]
+sendmail = "truenas_sendmail.py"
 
 # List any pools you want to backup, including:
 #  name: name of the pool (also the label under /dev/disk/by-label); each pool name can be configured only once
