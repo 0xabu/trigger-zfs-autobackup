@@ -14,6 +14,7 @@ import queue
 import signal
 import subprocess
 import sys
+import time
 import traceback
 from typing import IO, Optional
 
@@ -65,6 +66,7 @@ class UdevAutobackupMonitor:
         observer = pyudev.MonitorObserver(self.udev_monitor, callback=self._device_callback)
         observer.start()
         finished_devices: set[str] = set()
+        ok = True
 
         try:
             while True:
@@ -73,15 +75,20 @@ class UdevAutobackupMonitor:
                     action, device_label = self.device_events.get(block=True, timeout=(FINISHED_BEEP_INTERVAL if finished_devices else None))
                 except queue.Empty:
                     # Continuously beep for finished devices if they are still connected
-                    self.beep()
+                    if ok:
+                        self.beep()
+                    else:
+                        self.beep_for_error()
                     continue
 
                 if action == "add":
                     self.beep()
-                    self._do_backup(device_label)
+                    ok = ok and self._do_backup(device_label)
                     finished_devices.add(device_label)  # Add to finished devices set
                 elif action == "remove":
                     finished_devices.discard(device_label)
+                    if not finished_devices:
+                        ok = True
 
         except KeyboardInterrupt:
             logger.info("Received KeyboardInterrupt...")
@@ -91,7 +98,7 @@ class UdevAutobackupMonitor:
             logger.info("Shutting down")
             observer.stop()
 
-    def _do_backup(self, device_label: str) -> None:
+    def _do_backup(self, device_label: str) -> bool:
         try:
             pool_config = self.config.pools[device_label]
         except KeyError:
@@ -99,7 +106,7 @@ class UdevAutobackupMonitor:
             self._send_email(
                 "Unrecognized disk",
                 f"Plugged in disk {device_label} that is not matching any configuration. You can unplug it again safely.")
-            return
+            return False
 
         assert pool_config.name == device_label
         logger.info(f"Pool {device_label} has been added to queue. Starting backup...")
@@ -111,7 +118,7 @@ class UdevAutobackupMonitor:
             self._send_email(
                 "Unexpected error",
                 f"An unexpected error occurred. Backup has probably failed. Please investigate.\nError: {e}\n{traceback.format_exc()}")
-            return
+            return False
 
         if success:
             logger.info(f"Backup of {device_label} completed")
@@ -120,6 +127,8 @@ class UdevAutobackupMonitor:
                 f"Backup finished. You can safely unplug the disk {device_label} now.\n\n" + msg)
         else:
             self._send_email(f"Error backing up {device_label}", msg)
+
+        return success
 
     def _send_email(self, subject: str, body: str) -> None:
         if not self.config.email.recipients:
@@ -148,11 +157,20 @@ class UdevAutobackupMonitor:
         except subprocess.CalledProcessError:
             logger.exception(f"Error sending email to {self.config.email.recipients}")
 
+    # One beep, if enabled
     def beep(self) -> None:
         if self.config.beep:
             with open('/dev/tty5', 'w') as f:
                 f.write('\a')
 
+    # Sequence of beeps to signal an error
+    def beep_for_error(self) -> None:
+        if self.config.beep:
+            self.beep()
+            time.sleep(0.3)
+            self.beep()
+            time.sleep(0.3)
+            self.beep()
 
 def import_decrypt_backup_export(pool_config: PoolConfig) -> tuple[bool, str]:
     logger.debug(f"Importing pool {pool_config.name}")
